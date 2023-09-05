@@ -1,285 +1,375 @@
 ;;
 ;; An autohotkey script that provides emacs-like keybinding on Windows
 ;;
-#InstallKeybdHook
-#UseHook
 
-; The following line is a contribution of NTEmacs wiki http://www49.atwiki.jp/ntemacs/pages/20.html
-SetKeyDelay 0
+;; global constants
+DEBUG_MODE := 0
 
+;; global variables
 ; turns to be 1 when ctrl-x is pressed
-is_pre_x = 0
+gIsCtrlXPressed := 0
 ; turns to be 1 when ctrl-space is pressed
-is_pre_spc = 0
+gIsMarkDown := 0
+; turns to be 1 when escape key is pressed
+gIsEscapePressed := 0
+; turns to be 1 when Ctrl-s, Ctrl-r
+gIsSearching := 0
 
-; Applications you want to disable emacs-like keybindings
-; (Please comment out applications you don't use)
-is_target()
+reset_pre_keys()
 {
-  IfWinActive,ahk_class ConsoleWindowClass ; Cygwin
-    Return 1 
-  IfWinActive,ahk_class MEADOW ; Meadow
-    Return 1 
-  IfWinActive,ahk_class cygwin/x X rl-xterm-XTerm-0
-    Return 1
-  IfWinActive,ahk_class MozillaUIWindowClass ; keysnail on Firefox
-    Return 1
-  ; Avoid VMwareUnity with AutoHotkey
-  IfWinActive,ahk_class VMwareUnityHostWndClass
-    Return 1
-  IfWinActive,ahk_class Vim ; GVIM
-    Return 1
-;  IfWinActive,ahk_class SWT_Window0 ; Eclipse
-;    Return 1
-;   IfWinActive,ahk_class Xming X
-;     Return 1
-;   IfWinActive,ahk_class SunAwtFrame
-;     Return 1
-;   IfWinActive,ahk_class Emacs ; NTEmacs
-;     Return 1  
-;   IfWinActive,ahk_class XEmacs ; XEmacs on Cygwin
-;     Return 1
-  Return 0
+  global
+  gIsCtrlXPressed := 0
+  gIsMarkDown := 0
+  gIsEscapePressed := 0
+  Return
 }
-
+reset_all_status()
+{
+  reset_pre_keys()
+  global gIsSearching := 0
+}
 delete_char()
 {
-  Send {Del}
-  global is_pre_spc = 0
+  Send "{Del}"
+  reset_all_status()
   Return
 }
 delete_backward_char()
 {
-  Send {BS}
-  global is_pre_spc = 0
+  Send "{BS}"
+  reset_all_status()
   Return
 }
 kill_line()
 {
-  Send {ShiftDown}{END}{SHIFTUP}
+  Send "{ShiftDown}{END}{ShiftUp}"
   Sleep 50 ;[ms] this value depends on your environment
-  Send ^x
-  global is_pre_spc = 0
+  A_Clipboard := "" ; set empty
+  Send "^x"
+  ClipWait(0.1) ; wait for copy finish
+  text := A_Clipboard ; get the copied text
+
+  ;; if start pos is at line end (text is empty)
+  if (text = "") {
+    Send "{ShiftDown}{Right}{ShiftUp}"
+    Sleep 50 ;[ms] this value depends on your environment
+    Send "^x"
+  }
+
+  reset_all_status()
   Return
 }
 open_line()
 {
-  Send {END}{Enter}{Up}
-  global is_pre_spc = 0
+  Send "{END}{Enter}{Up}"
+  reset_all_status()
   Return
 }
 quit()
 {
-  Send {ESC}
-  global is_pre_spc = 0
+  Send "{ESC}"
+  reset_all_status()
   Return
 }
 newline()
 {
-  Send {Enter}
-  global is_pre_spc = 0
+  Send "{Enter}"
+  reset_all_status()
   Return
 }
 indent_for_tab_command()
 {
-  Send {Tab}
-  global is_pre_spc = 0
+  Send "{Tab}"
+  reset_all_status()
   Return
 }
 newline_and_indent()
 {
-  Send {Enter}{Tab}
-  global is_pre_spc = 0
+  Send "{Enter}{Tab}"
+  reset_all_status()
   Return
 }
 isearch_forward()
 {
-  Send ^f
-  global is_pre_spc = 0
+  global
+  If gIsSearching
+    Send "{F3}"
+  Else
+  {
+    Send "^f"
+    gIsSearching := 1
+  }
+  reset_pre_keys()
   Return
 }
 isearch_backward()
 {
-  Send ^f
-  global is_pre_spc = 0
+  global
+  If gIsSearching
+    Send "+{F3}"
+  Else
+  {
+    Send "^f"
+    gIsSearching := 1
+  }
+  reset_pre_keys()
   Return
 }
 kill_region()
 {
-  Send ^x
-  global is_pre_spc = 0
+  Send "^x"
+  reset_all_status()
   Return
 }
 kill_ring_save()
 {
-  Send ^c
-  global is_pre_spc = 0
+  Send "^c"
+  reset_all_status()
   Return
 }
 yank()
 {
-  Send ^v
-  global is_pre_spc = 0
+  Send "^v"
+  reset_all_status()
   Return
 }
 undo()
 {
-  Send ^z
-  global is_pre_spc = 0
+  Send "^z"
+  reset_all_status()
   Return
 }
 find_file()
 {
-  Send ^o
-  global is_pre_x = 0
+  Send "^o"
+  reset_all_status()
   Return
 }
 save_buffer()
 {
-  Send, ^s
-  global is_pre_x = 0
+  Send "^s"
+  reset_all_status()
   Return
 }
-kill_emacs()
+kill_window()
 {
-  Send !{F4}
-  global is_pre_x = 0
+  Send "!{F4}"
+  reset_all_status()
   Return
 }
-
+kill_buffer()
+{
+  Send "^w"
+  reset_all_status()
+  Return
+}
 move_beginning_of_line()
 {
   global
-  if is_pre_spc
-    Send +{HOME}
+  If gIsMarkDown
+    Send "+{HOME}"
   Else
-    Send {HOME}
+  {
+    Send "{HOME}"
+    reset_all_status()
+  }
   Return
 }
 move_end_of_line()
 {
   global
-  if is_pre_spc
-    Send +{END}
+  If gIsMarkDown
+    Send "+{END}"
   Else
-    Send {END}
+  {
+    Send "{END}"
+    reset_all_status()
+  }
   Return
 }
 previous_line()
 {
   global
-  if is_pre_spc
-    Send +{Up}
+  If gIsMarkDown
+    Send "+{Up}"
   Else
-    Send {Up}
+  {
+    Send "{Up}"
+    reset_all_status()
+  }
   Return
 }
 next_line()
 {
   global
-  if is_pre_spc
-    Send +{Down}
+  If gIsMarkDown
+    Send "+{Down}"
   Else
-    Send {Down}
+  {
+    Send "{Down}"
+    reset_all_status()
+  }
   Return
 }
 forward_char()
 {
   global
-  if is_pre_spc
-    Send +{Right}
+  If gIsMarkDown
+    Send "+{Right}"
   Else
-    Send {Right}
+  {
+    Send "{Right}"
+    reset_all_status()
+  }
   Return
 }
 backward_char()
 {
   global
-  if is_pre_spc
-    Send +{Left} 
+  If gIsMarkDown
+    Send "+{Left}"
   Else
-    Send {Left}
+  {
+    Send "{Left}"
+    reset_all_status()
+  }
   Return
 }
 scroll_up()
 {
   global
-  if is_pre_spc
-    Send +{PgUp}
+  If gIsMarkDown
+    Send "+{PgUp}"
   Else
-    Send {PgUp}
+  {
+    Send "{PgUp}"
+    reset_all_status()
+  }
   Return
 }
 scroll_down()
 {
   global
-  if is_pre_spc
-    Send +{PgDn}
+  If gIsMarkDown
+    Send "+{PgDn}"
   Else
-    Send {PgDn}
+  {
+    Send "{PgDn}"
+    reset_all_status()
+  }
+  Return
+}
+; https://qiita.com/c-nuts/items/20d02e572b6a06d5dce7
+ime_switch()
+{
+  global
+  Send "{vkF3sc029}"
+  reset_all_status()
+  Return
+}
+pageup_top()
+{
+  global
+  If gIsMarkDown
+    Send "+^{Home}"
+  Else
+  {
+    Send "^{Home}"
+    reset_all_status()
+  }
+  Return
+}
+pagedown_bottom()
+{
+  global
+  If gIsMarkDown
+    Send "+^{End}"
+  Else
+  {
+    Send "^{End}"
+    reset_all_status()
+  }
+  Return
+}
+set_ignore_targets() {
+  ; Applications you want to disable emacs-like keybindings
+  ; (Please comment out applications you don't use)
+  GroupAdd "IgnoreTargets", "ahk_class ConsoleWindowClass" ; Cygwin, Ubuntu
+  GroupAdd "IgnoreTargets", "ahk_class cygwin/x X rl-xterm-XTerm-0"
+  GroupAdd "IgnoreTargets", "ahk_class VMwareUnityHostWndClass"
+  GroupAdd "IgnoreTargets", "ahk_class Vim" ; GVIM
+  GroupAdd "IgnoreTargets", "ahk_class Emacs" ; NTEmacs
+  GroupAdd "IgnoreTargets", "ahk_class XEmacs" ; XEmacs on Cygwin
+  GroupAdd "IgnoreTargets", "ahk_exe vcxsrv.exe" ; gnome-terminal
+  GroupAdd "IgnoreTargets", "ahk_exe xyzzy.exe" ; xyzzy
+  GroupAdd "IgnoreTargets", "ahk_exe putty.exe" ; PuTTY
+  GroupAdd "IgnoreTargets", "ahk_exe ttermpro.exe" ; TeraTerm
+  GroupAdd "IgnoreTargets", "ahk_exe TurboVNC.exe" ; VNC
+  GroupAdd "IgnoreTargets", "ahk_exe vncviewer.exe" ; VNC
+}
+main() {
+  if (DEBUG_MODE > 0)
+    InstallKeybdHook
+
+  ;; Disable log
+  ListLines 0
+
+  ;; Disable delay
+  SetControlDelay 0
+  ;; SetKeyDelay 0
+  SetKeyDelay -1 ;; disable key delay
+  SetWinDelay 0
+  SendMode "Input"
+  ;;SendMode "Play"
+
+  set_ignore_targets()
+}
+
+main()
+
+#UseHook
+
+;; Set suspend toggle key
+#SuspendExempt
+^F1::Suspend
+#SuspendExempt False
+
+#HotIf not WinActive("ahk_group IgnoreTargets")
+^x::global gIsCtrlXPressed := 1
+Esc::
+{
+  global
+  If gIsEscapePressed
+  {
+    Send "{Esc}"
+    gIsEscapePressed := 0
+  }
+  Else
+    gIsEscapePressed := 1
+  Return
+}
+^f::
+{
+  global
+  If gIsCtrlXPressed
+    find_file()
+  Else
+    forward_char()
+  Return
+}
+^k::kill_line()
+k::
+{
+  global
+  If gIsCtrlXPressed
+    kill_buffer()
+  Else
+    Send A_ThisHotkey
   Return
 }
 
-
-^f::
-  If is_target()
-    Send %A_ThisHotkey%
-  Else
-  {
-    If is_pre_x
-      find_file()
-    Else
-      forward_char()
-  }
-  Return  
-^k::
-  If is_target()
-    Send %A_ThisHotkey%
-  Else
-    kill_line()
-  Return
-;; ^o::
-;;   If is_target()
-;;     Send %A_ThisHotkey%
-;;   Else
-;;     open_line()
-;;   Return
-;; ^j::
-;;   If is_target()
-;;     Send %A_ThisHotkey%
-;;   Else
-;;     newline_and_indent()
-;;   Return
-
-
-^a::
-  If is_target()
-    Send %A_ThisHotkey%
-  Else
-    move_beginning_of_line()
-  Return
-^e::
-  If is_target()
-    Send %A_ThisHotkey%
-  Else
-    move_end_of_line()
-  Return
-^p::
-  If is_target()
-    Send %A_ThisHotkey%
-  Else
-    previous_line()
-  Return
-^n::
-  If is_target()
-    Send %A_ThisHotkey%
-  Else
-    next_line()
-  Return
-^b::
-  If is_target()
-    Send %A_ThisHotkey%
-  Else
-    backward_char()
-  Return
-
+^a::move_beginning_of_line()
+^e::move_end_of_line()
+^p::previous_line()
+^n::next_line()
+^b::backward_char()
